@@ -1,0 +1,151 @@
+name: careercoach
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: career
+      POSTGRES_PASSWORD: career
+      POSTGRES_DB: career
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U career"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  user-management:
+    build:
+      context: ..
+      dockerfile: services/user-management/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_users
+      PERSONAL_ADMIN_URL: http://personal-admin:8002
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-please-32chars-min}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  personal-admin:
+    build:
+      context: ..
+      dockerfile: services/personal-admin/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_personal
+      PORT: 8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  system-admin:
+    build:
+      context: ..
+      dockerfile: services/system-admin/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_system
+      USER_MANAGEMENT_URL: http://user-management:8001
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
+      PORT: 8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  opportunity-service:
+    build:
+      context: ..
+      dockerfile: services/opportunity-service/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_opportunities
+      PERSONAL_ADMIN_URL: http://personal-admin:8002
+      PORT: 8004
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scout-agent:
+    build:
+      context: ..
+      dockerfile: services/scout-agent/Dockerfile
+    env_file: .env
+    environment:
+      OPPORTUNITY_SERVICE_URL: http://opportunity-service:8004
+      PERSONAL_ADMIN_URL: http://personal-admin:8002
+      SYSTEM_ADMIN_URL: http://system-admin:8003
+      PORT: 8005
+    ports:
+      - "8005:8005"
+    depends_on:
+      - opportunity-service
+      - personal-admin
+      - system-admin
+
+  relocation-agent:
+    build:
+      context: ..
+      dockerfile: services/relocation-agent/Dockerfile
+    env_file: .env
+    environment:
+      OPPORTUNITY_SERVICE_URL: http://opportunity-service:8004
+      PERSONAL_ADMIN_URL: http://personal-admin:8002
+      SYSTEM_ADMIN_URL: http://system-admin:8003
+      PORT: 8006
+    ports:
+      - "8006:8006"
+    depends_on:
+      - opportunity-service
+      - personal-admin
+      - system-admin
+
+  application-coach-agent:
+    build:
+      context: ..
+      dockerfile: services/application-coach-agent/Dockerfile
+    env_file: .env
+    environment:
+      OPPORTUNITY_SERVICE_URL: http://opportunity-service:8004
+      PERSONAL_ADMIN_URL: http://personal-admin:8002
+      SYSTEM_ADMIN_URL: http://system-admin:8003
+      PORT: 8007
+    ports:
+      - "8007:8007"
+    depends_on:
+      - opportunity-service
+      - personal-admin
+      - system-admin
+
+  frontend:
+    build:
+      context: ../frontend
+    environment:
+      NEXT_PUBLIC_USER_MANAGEMENT_URL: ${NEXT_PUBLIC_USER_MANAGEMENT_URL:-http://localhost:8001}
+      NEXT_PUBLIC_PERSONAL_ADMIN_URL: ${NEXT_PUBLIC_PERSONAL_ADMIN_URL:-http://localhost:8002}
+      NEXT_PUBLIC_SYSTEM_ADMIN_URL: ${NEXT_PUBLIC_SYSTEM_ADMIN_URL:-http://localhost:8003}
+      NEXT_PUBLIC_OPPORTUNITY_SERVICE_URL: ${NEXT_PUBLIC_OPPORTUNITY_SERVICE_URL:-http://localhost:8004}
+      NEXT_PUBLIC_SCOUT_AGENT_URL: ${NEXT_PUBLIC_SCOUT_AGENT_URL:-http://localhost:8005}
+      NEXT_PUBLIC_RELOCATION_AGENT_URL: ${NEXT_PUBLIC_RELOCATION_AGENT_URL:-http://localhost:8006}
+      NEXT_PUBLIC_APPLICATION_COACH_AGENT_URL: ${NEXT_PUBLIC_APPLICATION_COACH_AGENT_URL:-http://localhost:8007}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - user-management
+
+volumes:
+  pgdata:
