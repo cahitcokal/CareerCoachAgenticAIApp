@@ -12,6 +12,7 @@ Bu belge CareerCoachAgenticAIApp'in hem lokalde hem Google Cloud'da nasıl ayağ
 ### 1. Lokal kurulum — Docker Compose (önerilen)
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd infra
 copy .env.example .env
 # .env dosyasını düzenleyin: JWT_SECRET, INTERNAL_API_KEY ve SETTINGS_ENCRYPTION_KEY zorunludur.
@@ -20,12 +21,14 @@ copy .env.example .env
 `SETTINGS_ENCRYPTION_KEY` üretmek için:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 Ardından:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 docker compose up --build
 ```
 
@@ -47,6 +50,7 @@ Servisler:
 ### 2. Lokal kurulum — Docker'sız (geliştirme)
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd services
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -58,6 +62,7 @@ PostgreSQL'i lokalde çalıştırıp her servis için `DATABASE_URL` ayarlayın 
 Her servisi ayrı terminalde çalıştırın:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd services\user-management
 $env:PYTHONPATH="..\shared"
 $env:DATABASE_URL="postgresql+psycopg://career:career@localhost:5432/career_users"
@@ -67,6 +72,7 @@ uvicorn app.main:app --port 8001
 Aynı şekilde diğer servisleri 8002–8007 portlarında başlatın. Frontend için:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd frontend
 npm install
 npm run dev
@@ -87,6 +93,7 @@ INSERT INTO system_admins (user_id) VALUES (<user_id>);
 veya user-management API'si ile (token sahibi zaten admin olmalı — tavuk-yumurta durumu nedeniyle ilk atama SQL ile yapılır):
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 curl -X PATCH http://localhost:8001/admin/users/<id> -H "Authorization: Bearer <admin-token>" -H "Content-Type: application/json" -d '{"is_system_admin": true}'
 ```
 
@@ -113,6 +120,7 @@ Mimari öneri: **Cloud Run** (her servis için ayrı servis) + **Cloud SQL for P
 Adımlar:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud auth login
 gcloud config set project <PROJECT_ID>
 gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com
@@ -121,6 +129,7 @@ gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.
 **Veritabanı:**
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud sql instances create careercoach-db --database-version=POSTGRES_16 --tier=db-f1-micro --region=europe-west1
 gcloud sql databases create career_users --instance=careercoach-db
 # career_personal, career_system, career_opportunities için tekrarlayın
@@ -129,6 +138,7 @@ gcloud sql databases create career_users --instance=careercoach-db
 **Secret'lar:**
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud secrets create jwt-secret --data-file=-   # uzun rastgele string
 gcloud secrets create internal-api-key --data-file=-
 gcloud secrets create settings-encryption-key --data-file=-   # Fernet key
@@ -139,6 +149,7 @@ gcloud secrets create gemini-api-key --data-file=-
 **Servis hesapları ve deploy:** Her Python servisi için Cloud Run'a deploy edin. Örnek (user-management):
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud run deploy user-management `
   --source services/user-management `
   --region europe-west1 `
@@ -152,6 +163,7 @@ Alternatif daha temiz yol: Cloud SQL Auth Proxy sidecar yerine Cloud Run'ın `--
 **Frontend:** `NEXT_PUBLIC_*_URL` değişkenleri build-time gömüldüğü için image'ı doğru env ile build edin:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud run deploy frontend --source frontend --region europe-west1 `
   --set-env-vars "NEXT_PUBLIC_USER_MANAGEMENT_URL=https://user-management-xxx.run.app",...
 ```
@@ -169,11 +181,49 @@ veya `gcloud builds submit` ile build argümanı olarak verin. Frontend'i `--all
 ### 6. Testler
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd services\<service-name>
 ..\..\.venv\Scripts\python.exe -m pytest tests -q
 ```
 
 Frontend: `cd frontend; npm install; npx tsc --noEmit; npm run build`
+
+### CMD command equivalents
+
+The commands above are also available for Windows Command Prompt (CMD). Docker, Python, `npm`, `uvicorn`, `curl`, and `gcloud` commands are otherwise the same in both shells.
+
+PowerShell environment-variable assignments:
+
+```powershell
+$env:PYTHONPATH="..\shared"
+$env:DATABASE_URL="postgresql+psycopg://career:career@localhost:5432/career_users"
+```
+
+CMD equivalents:
+
+```cmd
+set PYTHONPATH=..\shared
+set DATABASE_URL=postgresql+psycopg://career:career@localhost:5432/career_users
+```
+
+PowerShell multi-line `gcloud` commands use a backtick (`). CMD uses a caret (`^`) instead:
+
+```cmd
+gcloud run deploy user-management ^
+  --source services/user-management ^
+  --region europe-west1 ^
+  --allow-unauthenticated ^
+  --set-secrets "JWT_SECRET=jwt-secret:latest,INTERNAL_API_KEY=internal-api-key:latest"
+```
+
+The local Docker Compose flow in CMD is:
+
+```cmd
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+copy .env.example .env
+notepad .env
+docker compose up --build
+```
 
 ## English
 
@@ -187,6 +237,7 @@ This document explains how to run CareerCoachAgenticAIApp locally and on Google 
 ### 1. Local setup — Docker Compose (recommended)
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd infra
 copy .env.example .env
 # Edit .env: JWT_SECRET, INTERNAL_API_KEY and SETTINGS_ENCRYPTION_KEY are required.
@@ -195,12 +246,14 @@ copy .env.example .env
 Generate `SETTINGS_ENCRYPTION_KEY`:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 Then:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 docker compose up --build
 ```
 
@@ -220,6 +273,7 @@ On first start the postgres container creates `career_users`, `career_personal`,
 ### 2. Local setup — without Docker (development)
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd services
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -231,6 +285,7 @@ Run PostgreSQL locally and set `DATABASE_URL` per service (e.g. `postgresql+psyc
 Run each service in its own terminal:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd services\user-management
 $env:PYTHONPATH="..\shared"
 $env:DATABASE_URL="postgresql+psycopg://career:career@localhost:5432/career_users"
@@ -240,6 +295,7 @@ uvicorn app.main:app --port 8001
 Repeat for the other services on ports 8002–8007. Frontend:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd frontend
 npm install
 npm run dev
@@ -260,6 +316,7 @@ INSERT INTO system_admins (user_id) VALUES (<user_id>);
 or via the API once any admin token exists:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 curl -X PATCH http://localhost:8001/admin/users/<id> -H "Authorization: Bearer <admin-token>" -H "Content-Type: application/json" -d '{"is_system_admin": true}'
 ```
 
@@ -284,6 +341,7 @@ Provider API keys should preferably be entered through the System Admin UI; they
 Recommended architecture: **Cloud Run** (one service per module) + **Cloud SQL for PostgreSQL** (single instance, 4 databases) + **Secret Manager** + Cloud Run for the Next.js frontend.
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud auth login
 gcloud config set project <PROJECT_ID>
 gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com
@@ -292,6 +350,7 @@ gcloud services enable run.googleapis.com sqladmin.googleapis.com secretmanager.
 **Database:**
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud sql instances create careercoach-db --database-version=POSTGRES_16 --tier=db-f1-micro --region=europe-west1
 gcloud sql databases create career_users --instance=careercoach-db
 # repeat for career_personal, career_system, career_opportunities
@@ -300,6 +359,7 @@ gcloud sql databases create career_users --instance=careercoach-db
 **Secrets:**
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud secrets create jwt-secret --data-file=-
 gcloud secrets create internal-api-key --data-file=-
 gcloud secrets create settings-encryption-key --data-file=-   # Fernet key
@@ -308,6 +368,7 @@ gcloud secrets create settings-encryption-key --data-file=-   # Fernet key
 **Deploy:** deploy each Python service to Cloud Run, e.g. user-management:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud run deploy user-management `
   --source services/user-management `
   --region europe-west1 `
@@ -322,6 +383,7 @@ Give every service its own `DATABASE_URL` (same Cloud SQL instance, different da
 **Frontend:** `NEXT_PUBLIC_*_URL` values are inlined at build time, so build the image with the correct env:
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 gcloud run deploy frontend --source frontend --region europe-west1 `
   --set-env-vars "NEXT_PUBLIC_USER_MANAGEMENT_URL=https://user-management-xxx.run.app",...
 ```
@@ -337,8 +399,46 @@ Deploy the frontend with `--allow-unauthenticated`; APIs stay protected by JWT.
 ### 6. Tests
 
 ```powershell
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 cd services\<service-name>
 ..\..\.venv\Scripts\python.exe -m pytest tests -q
 ```
 
 Frontend: `cd frontend; npm install; npx tsc --noEmit; npm run build`
+
+### CMD command equivalents
+
+The commands above are also available for Windows Command Prompt (CMD). Docker, Python, `npm`, `uvicorn`, `curl`, and `gcloud` commands are otherwise the same in both shells.
+
+PowerShell environment-variable assignments:
+
+```powershell
+$env:PYTHONPATH="..\shared"
+$env:DATABASE_URL="postgresql+psycopg://career:career@localhost:5432/career_users"
+```
+
+CMD equivalents:
+
+```cmd
+set PYTHONPATH=..\shared
+set DATABASE_URL=postgresql+psycopg://career:career@localhost:5432/career_users
+```
+
+PowerShell multi-line `gcloud` commands use a backtick (`). CMD uses a caret (`^`) instead:
+
+```cmd
+gcloud run deploy user-management ^
+  --source services/user-management ^
+  --region europe-west1 ^
+  --allow-unauthenticated ^
+  --set-secrets "JWT_SECRET=jwt-secret:latest,INTERNAL_API_KEY=internal-api-key:latest"
+```
+
+The local Docker Compose flow in CMD is:
+
+```cmd
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+copy .env.example .env
+notepad .env
+docker compose up --build
+```

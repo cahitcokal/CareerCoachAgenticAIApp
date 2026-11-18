@@ -13,6 +13,15 @@ copy .env.example .env    # set JWT_SECRET, INTERNAL_API_KEY, SETTINGS_ENCRYPTIO
 docker compose up --build
 ```
 
+CMD equivalent:
+
+```cmd
+cd infra
+copy .env.example .env
+notepad .env
+docker compose up --build
+```
+
 Frontend: http://localhost:3000 — see [docs/setup.md](docs/setup.md) for local
 and Google Cloud deployment, first-user bootstrap and API key management.
 
