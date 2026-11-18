@@ -24,7 +24,7 @@ services:
       dockerfile: services/user-management/Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_users
+      DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL:-postgresql+psycopg://career:career@postgres:5432/career_users}
       PERSONAL_ADMIN_URL: http://personal-admin:8002
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-please-32chars-min}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
@@ -41,7 +41,7 @@ services:
       dockerfile: services/personal-admin/Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_personal
+      DATABASE_URL: ${PERSONAL_ADMIN_DATABASE_URL:-postgresql+psycopg://career:career@postgres:5432/career_personal}
       PORT: 8002
     ports:
       - "8002:8002"
@@ -55,7 +55,7 @@ services:
       dockerfile: services/system-admin/Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_system
+      DATABASE_URL: ${SYSTEM_ADMIN_DATABASE_URL:-postgresql+psycopg://career:career@postgres:5432/career_system}
       USER_MANAGEMENT_URL: http://user-management:8001
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
       PORT: 8003
@@ -71,7 +71,7 @@ services:
       dockerfile: services/opportunity-service/Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://career:career@postgres:5432/career_opportunities
+      DATABASE_URL: ${OPPORTUNITY_SERVICE_DATABASE_URL:-postgresql+psycopg://career:career@postgres:5432/career_opportunities}
       PERSONAL_ADMIN_URL: http://personal-admin:8002
       PORT: 8004
     ports:

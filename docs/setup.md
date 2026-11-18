@@ -18,6 +18,13 @@ copy .env.example .env
 # .env dosyasını düzenleyin: JWT_SECRET, INTERNAL_API_KEY ve SETTINGS_ENCRYPTION_KEY zorunludur.
 ```
 
+Veritabanı sağlayıcısını değiştirmek için `infra/.env` içindeki
+`USER_MANAGEMENT_DATABASE_URL`, `PERSONAL_ADMIN_DATABASE_URL`,
+`SYSTEM_ADMIN_DATABASE_URL` ve `OPPORTUNITY_SERVICE_DATABASE_URL` değerlerini
+değiştirin. Dört servis aynı ortak adapter'ı kullanır; SQLite için servis başına
+ayrı `sqlite:///...` URL'si, PostgreSQL/Supabase/Neon için sağlayıcının
+`postgresql://` URL'si verilebilir.
+
 `SETTINGS_ENCRYPTION_KEY` üretmek için:
 
 ```powershell
@@ -79,6 +86,27 @@ npm run dev
 ```
 
 `NEXT_PUBLIC_*_URL` değişkenleri ile servis adreslerini frontend'e bildirin (varsayılanlar localhost portlarıdır).
+
+### 2a. PyCharm ile Docker'sız çalıştırma
+
+Proje kökünü PyCharm'da açın ve Python interpreter olarak kökteki
+`.venv\Scripts\python.exe` dosyasını seçin. `scripts/run_service.py` için bir
+**Python** run configuration oluşturun; **Script path** olarak bu dosyayı,
+**Working directory** olarak proje kökünü ve **Parameters** olarak örneğin
+`user-management` girin. Yapılandırmayı kopyalayıp yalnızca servis adını
+değiştirerek diğer servisleri çalıştırabilirsiniz: `personal-admin`,
+`system-admin`, `opportunity-service`, `scout-agent`, `relocation-agent` ve
+`application-coach-agent`.
+
+Betiğin varsayılanı, PostgreSQL gerektirmeyen servis başına bir SQLite dosyasını
+`runtime\` altında oluşturur. PostgreSQL, Supabase veya Neon kullanmak için
+run configuration içindeki **Environment variables** alanına ilgili
+`DATABASE_URL` değerini ekleyin. `postgresql://` ve `postgres://` URL'leri ortak
+adapter tarafından `psycopg` sürücüsüne çevrilir. Servis portları 8001–8007 arasındadır.
+
+Frontend için `frontend` klasörünü PyCharm'da ayrı bir Node.js projesi olarak
+açın; `npm install` çalıştırın ve `package.json` içindeki `dev` script'ini
+çalıştırın. API adresleri varsayılan olarak `http://localhost:8001`–`8007`'dir.
 
 ### 3. İlk kullanıcı ve sistem admin oluşturma
 
@@ -243,6 +271,12 @@ copy .env.example .env
 # Edit .env: JWT_SECRET, INTERNAL_API_KEY and SETTINGS_ENCRYPTION_KEY are required.
 ```
 
+To change database providers, edit `USER_MANAGEMENT_DATABASE_URL`,
+`PERSONAL_ADMIN_DATABASE_URL`, `SYSTEM_ADMIN_DATABASE_URL`, and
+`OPPORTUNITY_SERVICE_DATABASE_URL` in `infra/.env`. All four services use the
+same shared adapter: provide one `sqlite:///...` URL per service for SQLite, or
+the provider's `postgresql://` URL for PostgreSQL, Supabase, or Neon.
+
 Generate `SETTINGS_ENCRYPTION_KEY`:
 
 ```powershell
@@ -280,7 +314,7 @@ python -m venv .venv
 pip install -r requirements-dev.txt
 ```
 
-Run PostgreSQL locally and set `DATABASE_URL` per service (e.g. `postgresql+psycopg://career:career@localhost:5432/career_users`). Shared env vars are read via `career_shared.config.ServiceSettings`: `JWT_SECRET`, `INTERNAL_API_KEY`, `*_URL` service addresses, `SETTINGS_ENCRYPTION_KEY`.
+Run PostgreSQL locally and set `DATABASE_URL` per service (e.g. `postgresql+psycopg://career:career@localhost:5432/career_users`). For SQLite use `sqlite:///./runtime/service.db`; for Supabase or Neon use the provider's PostgreSQL connection URL. The shared adapter normalizes `postgresql://` and `postgres://` URLs to the psycopg driver. Shared env vars are read via `career_shared.config.ServiceSettings`: `JWT_SECRET`, `INTERNAL_API_KEY`, `*_URL` service addresses, and `SETTINGS_ENCRYPTION_KEY`.
 
 Run each service in its own terminal:
 
@@ -302,6 +336,27 @@ npm run dev
 ```
 
 Point the frontend at your services via `NEXT_PUBLIC_*_URL` (defaults are the localhost ports).
+
+### 2a. Run without Docker from PyCharm
+
+Open the project root in PyCharm and select the root `.venv\Scripts\python.exe`
+as the Python interpreter. Create a **Python** run configuration for
+`scripts/run_service.py`, using the project root as **Working directory** and,
+for example, `user-management` as **Parameters**. Duplicate the configuration
+and change only the service name for `personal-admin`, `system-admin`,
+`opportunity-service`, `scout-agent`, `relocation-agent`, and
+`application-coach-agent`.
+
+By default, the script creates one SQLite file per service under `runtime/`, so
+PostgreSQL is not required for local startup. To use PostgreSQL, Supabase, Neon,
+or another SQLAlchemy-compatible database, set `DATABASE_URL` in the run
+configuration's **Environment variables**. The shared adapter normalizes
+`postgresql://` and `postgres://` URLs to the `psycopg` driver. Service ports are
+8001–8007.
+
+For the frontend, open the `frontend` directory as a separate Node.js project
+in PyCharm, run `npm install`, and run the `dev` script from `package.json`. The
+default API URLs are `http://localhost:8001`–`8007`.
 
 ### 3. First user and system admin
 
@@ -330,7 +385,7 @@ curl -X PATCH http://localhost:8001/admin/users/<id> -H "Authorization: Bearer <
 | `JWT_SECRET` | all services | JWT signing key (32+ random chars) |
 | `INTERNAL_API_KEY` | all services | Service-to-service `X-Internal-Key` header |
 | `SETTINGS_ENCRYPTION_KEY` | system-admin | Fernet key encrypting provider API keys at rest |
-| `DATABASE_URL` | DB-backed services | `postgresql+psycopg://user:pass@host:5432/db` |
+| `DATABASE_URL` | DB-backed services | `sqlite:///./runtime/service.db` or a PostgreSQL/Supabase/Neon URL |
 | `GEMINI_API_KEY` etc. | optional fallback | Used only when no key is stored in the System Admin DB |
 | `NEXT_PUBLIC_*_URL` | frontend | Service base URLs (inlined at build time) |
 
