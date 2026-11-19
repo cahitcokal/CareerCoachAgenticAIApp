@@ -15,6 +15,12 @@ Bu belge, CareerCoachAgenticAIApp projesini Docker Compose ile lokal ortamda ça
 
 Kontrol:
 
+PowerShell:
+```powershell
+docker --version
+docker compose version
+```
+Command Prompt:
 ```cmd
 docker --version
 docker compose version
@@ -22,7 +28,14 @@ docker compose version
 
 ### 1. Ortam dosyasını oluşturma
 
-CMD ile proje klasörüne gidin:
+PowerShell ile proje klasörüne gidin:
+
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+Copy-Item .env.example .env
+notepad .env
+```
+Command Prompt ile proje klasörüne gidin:
 
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
@@ -50,10 +63,35 @@ NEXT_PUBLIC_RELOCATION_AGENT_URL=http://localhost:8006
 NEXT_PUBLIC_APPLICATION_COACH_AGENT_URL=http://localhost:8007
 ```
 
+### Veritabanı sağlayıcısını seçme
+
+Veritabanı seçimi servis kodundan ayrılmıştır. `infra/.env` içindeki aşağıdaki
+değerlerle her veritabanı sahibi servis için SQLite, PostgreSQL, Supabase veya
+Neon seçebilirsiniz:
+
+```env
+USER_MANAGEMENT_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_users
+PERSONAL_ADMIN_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_personal
+SYSTEM_ADMIN_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_system
+OPPORTUNITY_SERVICE_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_opportunities
+```
+
+SQLite için servis başına ayrı bir URL kullanın; örneğin
+`sqlite:///./runtime/user-management.db`. Supabase ve Neon için sağlayıcının
+verdiği `postgresql://` URL'si kullanılabilir; ortak adapter bunu otomatik
+olarak `psycopg` sürücüsüne uyarlar. Ajan servisleri veritabanına doğrudan
+bağlanmaz; veritabanı sahibi servislerin API'lerini kullanır.
+
 ### 2. Secret değerlerini üretme
 
 Proje kökünde bulunan sanal ortamı kullanarak iki rastgele değer üretin:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 .venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -63,6 +101,11 @@ Komutu iki kez çalıştırın. İlk çıktıyı `JWT_SECRET`, ikinci çıktıy�
 
 Fernet encryption key üretmek için:
 
+PowerShell:
+```powershell
+.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+Command Prompt:
 ```cmd
 .venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
@@ -84,12 +127,20 @@ Provider anahtarları tercihen `/system-admin` ekranından yapılandırılmalıd
 
 ### 4. Uygulamayı başlatma
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+docker compose up --build
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 docker compose up --build
 ```
 
-İlk çalıştırma sırasında PostgreSQL veritabanları oluşturulur ve servisler kendi tablolarını başlatır.
+İlk çalıştırma sırasında yapılandırılan veritabanı bağlantıları kullanılır ve
+servisler kendi tablolarını başlatır. Varsayılan Compose ayarları PostgreSQL'i
+kullanır.
 
 Servis adresleri:
 
@@ -114,8 +165,14 @@ Uygulamayı durdurmak için Compose penceresinde `Ctrl+C` kullanın.
 http://localhost:3000/register
 ```
 
-İlk kullanıcıyı system admin yapmak için yeni bir CMD penceresinde PostgreSQL konsolunu açın:
+İlk kullanıcıyı system admin yapmak için yeni bir terminal penceresinde PostgreSQL konsolunu açın:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+docker compose exec postgres psql -U career -d career_users
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 docker compose exec postgres psql -U career -d career_users
@@ -143,6 +200,13 @@ Daha sonra `http://localhost:3000/system-admin` adresinden provider anahtarları
 
 ### 6. Servis durumunu ve logları kontrol etme
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+docker compose ps
+docker compose logs -f
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 docker compose ps
@@ -151,6 +215,11 @@ docker compose logs -f
 
 Tek bir servisin loglarını görmek için:
 
+PowerShell:
+```powershell
+docker compose logs -f user-management
+```
+Command Prompt:
 ```cmd
 docker compose logs -f user-management
 ```
@@ -159,6 +228,19 @@ docker compose logs -f user-management
 
 Backend testleri:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+.venv\Scripts\python.exe -m pytest services\shared\tests -q
+.venv\Scripts\python.exe -m pytest services\user-management\tests -q
+.venv\Scripts\python.exe -m pytest services\personal-admin\tests -q
+.venv\Scripts\python.exe -m pytest services\system-admin\tests -q
+.venv\Scripts\python.exe -m pytest services\opportunity-service\tests -q
+.venv\Scripts\python.exe -m pytest services\scout-agent\tests -q
+.venv\Scripts\python.exe -m pytest services\relocation-agent\tests -q
+.venv\Scripts\python.exe -m pytest services\application-coach-agent\tests -q
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 .venv\Scripts\python.exe -m pytest services\shared\tests -q
@@ -173,8 +255,16 @@ cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 
 Frontend kontrolü:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
+npm install
+npx tsc --noEmit
+npm run build
+```
+Command Prompt:
 ```cmd
-cd frontend
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
 npm install
 npx tsc --noEmit
 npm run build
@@ -182,58 +272,78 @@ npm run build
 
 ### Docker olmadan tamamen lokal çalıştırma
 
-Uygulama Docker olmadan da çalıştırılabilir; ancak Docker Compose'un yönettiği işlemlerin manuel yapılması gerekir. Python 3.12, Node.js 20, çalışan bir PostgreSQL kurulumu, Python bağımlılıkları, yedi FastAPI servisi ve Next.js frontend gereklidir.
+Uygulama Docker olmadan da çalıştırılabilir; ancak Docker Compose'un yönettiği
+işlemlerin manuel yapılması gerekir. Python 3.12, Node.js 20, Python
+bağımlılıkları, yedi FastAPI servisi ve Next.js frontend gereklidir. PyCharm
+veya `scripts\run_service.py` kullanıldığında SQLite varsayılan olduğu için
+lokal PostgreSQL kurulumu zorunlu değildir.
 
-Şu PostgreSQL veritabanlarını oluşturun:
+PostgreSQL, Supabase veya Neon kullanacaksanız her veritabanı sahibi servis
+için ayrı bir `DATABASE_URL` ayarlayın. SQLite ile başlamak için servisleri
+proje kökünden şu ortak giriş noktasıyla çalıştırın:
 
 ```text
-career_users
-career_personal
-career_system
-career_opportunities
+scripts\run_service.py user-management
+scripts\run_service.py personal-admin
+scripts\run_service.py system-admin
+scripts\run_service.py opportunity-service
 ```
-
-Proje kökünden veritabanı başlangıç SQL'ini çalıştırabilirsiniz:
-
-```cmd
-psql -U postgres -f infra\postgres-init\01-databases.sql
-```
-
-Aynı SQL'i pgAdmin üzerinden de çalıştırabilirsiniz.
 
 Backend bağımlılıklarını yükleyin:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+.venv\Scripts\python.exe -m pip install -r services\requirements-dev.txt
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 .venv\Scripts\python.exe -m pip install -r services\requirements-dev.txt
 ```
 
-Her backend servisini ayrı bir CMD penceresinde çalıştırın. `user-management` örneği:
+Her backend servisini ayrı bir terminal penceresinde çalıştırın. `user-management` örneği:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+$env:DATABASE_URL="sqlite:///./runtime/user-management.db"
+$env:JWT_SECRET="..."
+$env:INTERNAL_API_KEY="..."
+$env:SETTINGS_ENCRYPTION_KEY="..."
+.venv\Scripts\python.exe scripts\run_service.py user-management
+```
+Command Prompt:
 ```cmd
-cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\services\user-management
-set PYTHONPATH=..\shared
-set DATABASE_URL=postgresql+psycopg://career:career@localhost:5432/career_users
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+set DATABASE_URL=sqlite:///./runtime/user-management.db
 set JWT_SECRET=...
 set INTERNAL_API_KEY=...
 set SETTINGS_ENCRYPTION_KEY=...
-uvicorn app.main:app --host 127.0.0.1 --port 8001
+.venv\Scripts\python.exe scripts\run_service.py user-management
 ```
 
 Servis ve port eşleşmeleri:
 
 | Servis | Port | Veritabanı |
 |---|---:|---|
-| user-management | 8001 | `career_users` |
-| personal-admin | 8002 | `career_personal` |
-| system-admin | 8003 | `career_system` |
-| opportunity-service | 8004 | `career_opportunities` |
+| user-management | 8001 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase veya Neon |
+| personal-admin | 8002 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase veya Neon |
+| system-admin | 8003 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase veya Neon |
+| opportunity-service | 8004 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase veya Neon |
 | scout-agent | 8005 | servise özel yapılandırma |
 | relocation-agent | 8006 | servise özel yapılandırma |
 | application-coach-agent | 8007 | servise özel yapılandırma |
 
-Frontend'i başka bir CMD penceresinde çalıştırın:
+Frontend'i başka bir terminal penceresinde çalıştırın:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
+npm install
+npm run dev
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
 npm install
@@ -250,58 +360,78 @@ This document explains how to run CareerCoachAgenticAIApp locally with Docker Co
 
 ### Running fully locally without Docker
 
-The application can run without Docker, but Docker Compose's orchestration work must be performed manually. You need Python 3.12, Node.js 20, a running PostgreSQL installation, the Python dependencies, seven FastAPI services, and the Next.js frontend.
+The application can run without Docker, but Docker Compose's orchestration work
+must be performed manually. You need Python 3.12, Node.js 20, the Python
+dependencies, seven FastAPI services, and the Next.js frontend. A local
+PostgreSQL installation is not required when PyCharm or `scripts\run_service.py`
+is used because SQLite is the default.
 
-Create these PostgreSQL databases:
+If you use PostgreSQL, Supabase, or Neon, set a separate `DATABASE_URL` for
+each database-owning service. To start with SQLite, run services from the
+project root through the shared entry point:
 
 ```text
-career_users
-career_personal
-career_system
-career_opportunities
+scripts\run_service.py user-management
+scripts\run_service.py personal-admin
+scripts\run_service.py system-admin
+scripts\run_service.py opportunity-service
 ```
-
-From the project root, the database initialization script can be applied with:
-
-```cmd
-psql -U postgres -f infra\postgres-init\01-databases.sql
-```
-
-The same SQL can also be run through pgAdmin.
 
 Install the backend dependencies:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+.venv\Scripts\python.exe -m pip install -r services\requirements-dev.txt
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 .venv\Scripts\python.exe -m pip install -r services\requirements-dev.txt
 ```
 
-Run each backend service in a separate CMD window. Example for `user-management`:
+Run each backend service in a separate terminal window. Example for `user-management`:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+$env:DATABASE_URL="sqlite:///./runtime/user-management.db"
+$env:JWT_SECRET="..."
+$env:INTERNAL_API_KEY="..."
+$env:SETTINGS_ENCRYPTION_KEY="..."
+.venv\Scripts\python.exe scripts\run_service.py user-management
+```
+Command Prompt:
 ```cmd
-cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\services\user-management
-set PYTHONPATH=..\shared
-set DATABASE_URL=postgresql+psycopg://career:career@localhost:5432/career_users
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+set DATABASE_URL=sqlite:///./runtime/user-management.db
 set JWT_SECRET=...
 set INTERNAL_API_KEY=...
 set SETTINGS_ENCRYPTION_KEY=...
-uvicorn app.main:app --host 127.0.0.1 --port 8001
+.venv\Scripts\python.exe scripts\run_service.py user-management
 ```
 
 Service and port mapping:
 
 | Service | Port | Database |
 |---|---:|---|
-| user-management | 8001 | `career_users` |
-| personal-admin | 8002 | `career_personal` |
-| system-admin | 8003 | `career_system` |
-| opportunity-service | 8004 | `career_opportunities` |
+| user-management | 8001 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase, or Neon |
+| personal-admin | 8002 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase, or Neon |
+| system-admin | 8003 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase, or Neon |
+| opportunity-service | 8004 | `DATABASE_URL` / SQLite, PostgreSQL, Supabase, or Neon |
 | scout-agent | 8005 | service-specific configuration |
 | relocation-agent | 8006 | service-specific configuration |
 | application-coach-agent | 8007 | service-specific configuration |
 
-Run the frontend in another CMD window:
+Run the frontend in another terminal window:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
+npm install
+npm run dev
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
 npm install
@@ -323,6 +453,12 @@ Do not commit `.env` files, API keys, or passwords to Git. If an API key is acci
 
 Check the installation:
 
+PowerShell:
+```powershell
+docker --version
+docker compose version
+```
+Command Prompt:
 ```cmd
 docker --version
 docker compose version
@@ -330,8 +466,15 @@ docker compose version
 
 ### 1. Create the environment file
 
-Open CMD and go to the infrastructure directory:
+Open a terminal and go to the infrastructure directory:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+Copy-Item .env.example .env
+notepad .env
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 copy .env.example .env
@@ -358,10 +501,35 @@ NEXT_PUBLIC_RELOCATION_AGENT_URL=http://localhost:8006
 NEXT_PUBLIC_APPLICATION_COACH_AGENT_URL=http://localhost:8007
 ```
 
+### Selecting a database provider
+
+Database selection is isolated from service code. In `infra/.env`, change the
+following values to choose SQLite, PostgreSQL, Supabase, or Neon for each
+database-owning service:
+
+```env
+USER_MANAGEMENT_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_users
+PERSONAL_ADMIN_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_personal
+SYSTEM_ADMIN_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_system
+OPPORTUNITY_SERVICE_DATABASE_URL=postgresql+psycopg://career:career@postgres:5432/career_opportunities
+```
+
+Use a separate URL per service for SQLite, such as
+`sqlite:///./runtime/user-management.db`. For Supabase and Neon, use the
+provider's `postgresql://` URL; the shared adapter normalizes it to the
+`psycopg` driver. Agent services do not connect to a database directly; they
+use the APIs of the database-owning services.
+
 ### 2. Generate secret values
 
 Use the virtual environment in the project root to generate two random values:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 .venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -371,6 +539,11 @@ Run the command twice. Use the first output for `JWT_SECRET` and the second for 
 
 Generate the Fernet encryption key with:
 
+PowerShell:
+```powershell
+.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+Command Prompt:
 ```cmd
 .venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
@@ -392,12 +565,19 @@ Provider keys should preferably be configured through `/system-admin`. The appli
 
 ### 4. Start the application
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+docker compose up --build
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 docker compose up --build
 ```
 
-On the first start, PostgreSQL databases are created and each service initializes its tables.
+On the first start, the configured database URLs are used and each service
+initializes its own tables. The default Compose configuration uses PostgreSQL.
 
 Service addresses:
 
@@ -422,8 +602,14 @@ Create the first user at:
 http://localhost:3000/register
 ```
 
-Open the PostgreSQL console from a new CMD window:
+Open the PostgreSQL console from a new terminal window:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+docker compose exec postgres psql -U career -d career_users
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 docker compose exec postgres psql -U career -d career_users
@@ -451,6 +637,13 @@ Then use `http://localhost:3000/system-admin` to configure provider keys, models
 
 ### 6. Check service status and logs
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
+docker compose ps
+docker compose logs -f
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
 docker compose ps
@@ -459,6 +652,11 @@ docker compose logs -f
 
 To view one service's logs:
 
+PowerShell:
+```powershell
+docker compose logs -f user-management
+```
+Command Prompt:
 ```cmd
 docker compose logs -f user-management
 ```
@@ -467,6 +665,19 @@ docker compose logs -f user-management
 
 Backend tests:
 
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
+.venv\Scripts\python.exe -m pytest services\shared\tests -q
+.venv\Scripts\python.exe -m pytest services\user-management\tests -q
+.venv\Scripts\python.exe -m pytest services\personal-admin\tests -q
+.venv\Scripts\python.exe -m pytest services\system-admin\tests -q
+.venv\Scripts\python.exe -m pytest services\opportunity-service\tests -q
+.venv\Scripts\python.exe -m pytest services\scout-agent\tests -q
+.venv\Scripts\python.exe -m pytest services\relocation-agent\tests -q
+.venv\Scripts\python.exe -m pytest services\application-coach-agent\tests -q
+```
+Command Prompt:
 ```cmd
 cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 .venv\Scripts\python.exe -m pytest services\shared\tests -q
@@ -481,29 +692,17 @@ cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp
 
 Frontend checks:
 
-```cmd
-cd frontend
+PowerShell:
+```powershell
+cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
 npm install
 npx tsc --noEmit
 npm run build
 ```
-
-### PowerShell equivalents
-
-The CMD commands above can also be run in PowerShell. For commands that differ between shells, use these PowerShell forms:
-
-```powershell
-cd C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\infra
-Copy-Item .env.example .env
-notepad .env
-docker compose up --build
+Command Prompt:
+```cmd
+cd /d C:\Users\cahitcokal\PycharmProjects\CareerCoachAgenticAIApp\frontend
+npm install
+npx tsc --noEmit
+npm run build
 ```
-
-PowerShell environment-variable assignments use `$env:`:
-
-```powershell
-$env:PYTHONPATH="..\shared"
-$env:DATABASE_URL="postgresql+psycopg://career:career@localhost:5432/career_users"
-```
-
-For multi-line `gcloud` commands, PowerShell uses a backtick (`) at the end of each continued line, while CMD uses a caret (`^`). Docker, Python, `npm`, `uvicorn`, `curl`, and `gcloud` commands otherwise have the same syntax in both shells.
