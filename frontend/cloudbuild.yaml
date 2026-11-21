@@ -1,0 +1,27 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        docker build \
+          --build-arg NEXT_PUBLIC_USER_MANAGEMENT_URL=$_USER_MANAGEMENT_URL \
+          --build-arg NEXT_PUBLIC_PERSONAL_ADMIN_URL=$_PERSONAL_ADMIN_URL \
+          --build-arg NEXT_PUBLIC_SYSTEM_ADMIN_URL=$_SYSTEM_ADMIN_URL \
+          --build-arg NEXT_PUBLIC_OPPORTUNITY_SERVICE_URL=$_OPPORTUNITY_SERVICE_URL \
+          --build-arg NEXT_PUBLIC_SCOUT_AGENT_URL=$_SCOUT_AGENT_URL \
+          --build-arg NEXT_PUBLIC_RELOCATION_AGENT_URL=$_RELOCATION_AGENT_URL \
+          --build-arg NEXT_PUBLIC_APPLICATION_COACH_AGENT_URL=$_APPLICATION_COACH_AGENT_URL \
+          -t europe-west1-docker.pkg.dev/careercoachagenticaiapp/careercoach-repo/frontend \
+          .
+    timeout: '1800s'
+images:
+  - 'europe-west1-docker.pkg.dev/careercoachagenticaiapp/careercoach-repo/frontend'
+substitutions:
+  _USER_MANAGEMENT_URL: 'https://user-management-379308139981.europe-west1.run.app'
+  _PERSONAL_ADMIN_URL: 'https://personal-admin-379308139981.europe-west1.run.app'
+  _SYSTEM_ADMIN_URL: 'https://system-admin-379308139981.europe-west1.run.app'
+  _OPPORTUNITY_SERVICE_URL: 'https://opportunity-service-379308139981.europe-west1.run.app'
+  _SCOUT_AGENT_URL: 'https://scout-agent-379308139981.europe-west1.run.app'
+  _RELOCATION_AGENT_URL: 'https://relocation-agent-379308139981.europe-west1.run.app'
+  _APPLICATION_COACH_AGENT_URL: 'https://application-coach-agent-379308139981.europe-west1.run.app'

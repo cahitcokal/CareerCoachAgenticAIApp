@@ -1,11 +1,31 @@
 const DEFAULTS: Record<string, string> = {
-  USER_MANAGEMENT: "http://localhost:8001",
-  PERSONAL_ADMIN: "http://localhost:8002",
-  SYSTEM_ADMIN: "http://localhost:8003",
-  OPPORTUNITY_SERVICE: "http://localhost:8004",
-  SCOUT_AGENT: "http://localhost:8005",
-  RELOCATION_AGENT: "http://localhost:8006",
-  APPLICATION_COACH_AGENT: "http://localhost:8007",
+  USER_MANAGEMENT:
+    process.env.NEXT_PUBLIC_USER_MANAGEMENT_URL ||
+    "https://user-management-379308139981.europe-west1.run.app",
+
+  PERSONAL_ADMIN:
+    process.env.NEXT_PUBLIC_PERSONAL_ADMIN_URL ||
+    "https://personal-admin-379308139981.europe-west1.run.app",
+
+  SYSTEM_ADMIN:
+    process.env.NEXT_PUBLIC_SYSTEM_ADMIN_URL ||
+    "https://system-admin-379308139981.europe-west1.run.app",
+
+  OPPORTUNITY_SERVICE:
+    process.env.NEXT_PUBLIC_OPPORTUNITY_SERVICE_URL ||
+    "https://opportunity-service-379308139981.europe-west1.run.app",
+
+  SCOUT_AGENT:
+    process.env.NEXT_PUBLIC_SCOUT_AGENT_URL ||
+    "https://scout-agent-379308139981.europe-west1.run.app",
+
+  RELOCATION_AGENT:
+    process.env.NEXT_PUBLIC_RELOCATION_AGENT_URL ||
+    "https://relocation-agent-379308139981.europe-west1.run.app",
+
+  APPLICATION_COACH_AGENT:
+    process.env.NEXT_PUBLIC_APPLICATION_COACH_AGENT_URL ||
+    "https://application-coach-agent-379308139981.europe-west1.run.app",
 };
 
 const service = (name: keyof typeof DEFAULTS) =>
