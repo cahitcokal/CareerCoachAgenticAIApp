@@ -1,14 +1,15 @@
 # CareerCoachAgenticAIApp — Prodüksiyon Dağıtım (Deployment) Rehberi
 
-Bu doküman, **CareerCoachAgenticAIApp** mikroservis mimarisinin **Hetzner Cloud (Ubuntu VPS)** ve **Coolify (PaaS)** kullanılarak canlı ortama (production) alınması için gereken altyapı hazırlığı, kod düzenleme, GitHub versiyonlama ve sunucu kurulum adımlarını içerir.
+Bu doküman, **CareerCoachAgenticAIApp** mikroservis mimarisinin **Hetzner Cloud (Ubuntu VPS)** ve **Coolify (PaaS)** kullanılarak canlı ortama (production) alınması için gereken altyapı hazırlığı, kod düzenleme, GitHub versiyonlama, ilk kurulum ve sonraki otomatik güncellemelerin adımlarını içerir.
 
 ## İçindekiler
 
 1. [Altyapı Hazırlığı ve Sunucu Kurulumu](#1-altyapı-hazırlığı-ve-sunucu-kurulumu)
 2. [Lokalde Yapılacak Kod Değişiklikleri (LLM Prompt)](#2-lokalde-yapılacak-kod-değişiklikleri-llm-prompt)
 3. [GitHub Üzerinde Versiyonlama](#3-github-üzerinde-versiyonlama)
-4. [Sunucu Kurulumu ve Canlıya Çıkış (Coolify)](#4-sunucu-kurulumu-ve-canlıya-çıkış-coolify)
-5. [Canlıya Çıktıktan Sonra Kontrol Listesi](#5-canlıya-çıktıktan-sonra-kontrol-listesi)
+4. [Sunucu Kurulumu ve İlk Canlıya Çıkış (Manuel Zorunlu Adımlar)](#4-sunucu-kurulumu-ve-ilk-canlıya-çıkış-manuel-zorunlu-adımlar)
+5. [İlk Kurulum Sonrası Güncellemeler (Otomatik CI/CD Süreci)](#5-ilk-kurulum-sonrası-güncellemeler-otomatik-cicd-süreci)
+6. [Canlıya Çıktıktan Sonra Kontrol Listesi](#6-canlıya-çıktıktan-sonra-kontrol-listesi)
 
 ---
 
@@ -31,51 +32,38 @@ Hiçbir ücret ödemeden ücretsiz SSL (HTTPS) alabileceğiniz bir alan adı olu
 #### Seçenek B (Alternatif — Ücretli): Özel Alan Adı Satın Alma
 * **Cloudflare Registrar** (~$10–$12/yıl) üzerinden özel bir domain satın alabilir ve DNS kayıtlarını Cloudflare üzerinden yönetebilirsiniz.
 
----
-
 ### Adım 1.2: Lokal Bilgisayarda SSH Anahtarı Üretme
-
 Sunucuya şifresiz ve güvenli bağlanmak için SSH anahtar çifti oluşturun.
 
 **PowerShell:**
-
 ```powershell
 ssh-keygen -t ed25519 -C "careercoach-prod"
 Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub"
 ```
 
 **CMD (Komut İstemi):**
-
 ```cmd
 ssh-keygen -t ed25519 -C "careercoach-prod"
 type "%USERPROFILE%\.ssh\id_ed25519.pub"
 ```
-
 *(Ekrana yazdırılan `ssh-ed25519 AAAA...` ile başlayan tek satırlık metni kopyalayın.)*
 
----
-
 ### Adım 1.3: Hetzner Cloud Hesabı Açma ve Sunucu (VPS) Oluşturma
-
 1. [console.hetzner.cloud](https://console.hetzner.cloud/) adresinden hesap oluşturun ve kimlik/kart doğrulamasını tamamlayın.
 2. **New Project** diyerek yeni proje açın ve **Add Server** butonuna tıklayın:
    * **Location:** `Falkenstein` veya `Nuremberg` (Almanya — düşük gecikme ve en uygun fiyat).
    * **Image (İşletim Sistemi):** `Ubuntu 24.04 LTS`.
-   * **Type:** `Shared vCPU` → `Cost-Optimized` sekmesinden **`CX22`** seçin *(2 vCPU, 4 GB RAM, 40 GB NVMe SSD — \~€4.51/ay)*.
+   * **Type:** `Shared vCPU` → `Cost-Optimized` sekmesinden **`CX22`** seçin *(2 vCPU, 4 GB RAM, 40 GB NVMe SSD — ~€4.51/ay)*.
    * **Networking:** `Public IPv4` seçili olsun.
    * **SSH Keys:** Bir önceki adımda kopyaladığınız `.pub` anahtarını buraya yapıştırın.
    * **Name:** `careercoach-prod` yazıp **Create & Buy Now** butonuna tıklayın.
 3. Oluşturulan sunucunun **Public IPv4** adresini (örnek: `49.12.xx.xx`) not alın.
 
----
-
 ### Adım 1.4: DNS / IP Yönlendirmesini Tamamlama
-
 * **DuckDNS (Seçenek A) Kullanıyorsanız:**
   1. [duckdns.org](https://www.duckdns.org/) paneline geri dönün.
   2. Oluşturduğunuz `careercoachapp` satırındaki IP kutusuna Hetzner'in verdiği Public IPv4 adresini (`49.12.xx.xx`) yazın ve **update ip** butonuna tıklayın.
   3. Birkaç dakika içinde `careercoachapp.duckdns.org`, `api.careercoachapp.duckdns.org` ve `coolify.careercoachapp.duckdns.org` adreslerinin tamamı sunucunuza yönlenmiş olacaktır.
-
 * **Ücretli Domain + Cloudflare (Seçenek B) Kullanıyorsanız:**
   Cloudflare DNS paneline aşağıdaki 3 adet `A` kaydını girin:
   * `A` | `@` | `49.12.xx.xx`
@@ -137,9 +125,7 @@ Lütfen projede aşağıdaki 5 değişikliği eksiksiz ve çalışır şekilde o
 Kod değişikliklerini tamamladıktan sonra yerel testinizi yapıp değişiklikleri güvenli şekilde GitHub'a aktarın.
 
 ### Adım 3.1: Hassas Dosyaların Kontrolü (`.gitignore`)
-
 Proje kök dizinindeki `.gitignore` dosyasında aşağıdaki satırların bulunduğundan emin olun (hiçbir gizli anahtar GitHub'a gitmemelidir):
-
 ```gitignore
 .env
 .env.local
@@ -152,7 +138,6 @@ postgres_data/
 ### Adım 3.2: Yeni Dal (Branch) Açma, Commit ve Push İşlemleri
 
 **PowerShell:**
-
 ```powershell
 git checkout -b feat/production-deployment
 git status
@@ -162,7 +147,6 @@ git push -u origin feat/production-deployment
 ```
 
 **CMD (Komut İstemi):**
-
 ```cmd
 git checkout -b feat/production-deployment
 git status
@@ -172,35 +156,33 @@ git push -u origin feat/production-deployment
 ```
 
 ### Adım 3.3: Pull Request ve Merge
-
 1. GitHub üzerinde `CareerCoachAgenticAIApp` reponuza gidin.
 2. **Compare & pull request** butonuna tıklayın.
 3. Değişiklikleri kontrol edip `main` dalına **Merge pull request** yapın.
 
+> **Önemli Not:** Değişiklikleri GitHub'da `main` dalına birleştirmek tek başına canlıya çıkış için yeterli değildir. İlk seferde aşağıdaki **Bölüm 4** adımlarını manuel olarak tamamlamanız gerekir.
+
 ---
 
-## 4. Sunucu Kurulumu ve Canlıya Çıkış (Coolify)
+## 4. Sunucu Kurulumu ve İlk Canlıya Çıkış (Manuel Zorunlu Adımlar)
+
+İlk canlıya çıkışta sunucu kurulumu, repo yetkilendirmesi, `.env` gizli anahtarlarının girilmesi ve domain tanımlaması bir seferlik manuel yapılır.
 
 ### Adım 4.1: Hetzner Sunucusuna SSH Bağlantısı
-
 Lokal bilgisayarınızdan sunucunuza bağlanın (`49.12.xx.xx` yerine kendi sunucu IP adresinizi yazın):
 
 **PowerShell:**
-
 ```powershell
 ssh root@49.12.xx.xx
 ```
 
 **CMD (Komut İstemi):**
-
 ```cmd
 ssh root@49.12.xx.xx
 ```
 
 ### Adım 4.2: Sunucu Güncelleme ve Güvenlik Duvarı (UFW)
-
 *(Aşağıdaki komutlar uzak Ubuntu sunucusunun SSH terminalinde çalıştırılır.)*
-
 ```bash
 apt update && apt upgrade -y
 ufw allow 22/tcp
@@ -210,23 +192,18 @@ ufw --force enable
 ```
 
 ### Adım 4.3: Coolify Kurulumu
-
 *(Uzak Ubuntu sunucusunun SSH terminalinde çalıştırılır; kurulum yaklaşık 2-3 dakika sürer.)*
-
 ```bash
 curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
 ```
-
 1. Kurulum bittiğinde tarayıcınızdan `http://49.12.xx.xx:8000` adresine girin ve ilk yönetici (admin) hesabınızı oluşturun.
 2. Coolify arayüzünde **Settings** menüsüne girip **Instance Domain** alanına DuckDNS adresinizi (`https://coolify.careercoachapp.duckdns.org`) yazın ve kaydedin. Coolify otomatik olarak ücretsiz Let's Encrypt SSL sertifikası oluşturacaktır.
 
 ### Adım 4.4: GitHub Repoyu Coolify'a Bağlama
-
 1. Coolify panelinde **Sources → Add** yolunu izleyerek **GitHub App** oluşturun.
-2. Yönlendirilen GitHub ekranında yalnızca `CareerCoachAgenticAIApp` reposuna erişim izni verin. *(Bu sayede private repo olsa dahi otomatik çekilir ve her push işleminde otomatik deploy tetiklenir.)*
+2. Yönlendirilen GitHub ekranında yalnızca `CareerCoachAgenticAIApp` reposuna erişim izni verin. *(Bu sayede private repo olsa dahi otomatik çekilir.)*
 
-### Adım 4.5: Projeyi ve Docker Compose Yapısını Deploy Etme
-
+### Adım 4.5: Projeyi ve Docker Compose Yapısını Tanımlama
 1. Coolify'da **Projects → New Project** (`CareerCoachProd`) oluşturun.
 2. **+ New Resource → Docker Compose** seçeneğine tıklayın.
 3. Bağladığınız `CareerCoachAgenticAIApp` reposunu ve `main` dalını seçin.
@@ -235,9 +212,8 @@ curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
    * `frontend` servisi için: `https://careercoachapp.duckdns.org`
    * `caddy` (API Gateway) servisi için: `https://api.careercoachapp.duckdns.org`
 
-### Adım 4.6: Ortam Değişkenleri (Environment Variables) ve Başlatma
-
-1. Coolify'daki **Environment Variables** sekmesine `.env.prod.example` dosyanızdaki tüm değişkenleri ve gizli anahtarları girin. DuckDNS adreslerinize göre API URL'lerini şu şekilde tanımlayın:
+### Adım 4.6: Ortam Değişkenleri (Environment Variables) ve İlk Deploy
+1. Coolify'daki **Environment Variables** sekmesine `.env.prod.example` dosyanızdaki tüm değişkenleri ve gizli anahtarları (`JWT_SECRET`, `INTERNAL_API_KEY`, `FERNET_KEY`, `POSTGRES_PASSWORD` vb.) girin:
    * `NEXT_PUBLIC_USER_API_URL=https://api.careercoachapp.duckdns.org/api/users`
    * `NEXT_PUBLIC_PERSONAL_API_URL=https://api.careercoachapp.duckdns.org/api/personal`
    * `NEXT_PUBLIC_SYSTEM_API_URL=https://api.careercoachapp.duckdns.org/api/system`
@@ -246,13 +222,27 @@ curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
    * `NEXT_PUBLIC_RELOCATION_API_URL=https://api.careercoachapp.duckdns.org/api/agents/relocation`
    * `NEXT_PUBLIC_COACH_API_URL=https://api.careercoachapp.duckdns.org/api/agents/coach`
 2. Sağ üstteki **Deploy** butonuna basın.
-3. Tüm konteynerler `Running (Healthy)` durumuna geçtiğinde `https://careercoachapp.duckdns.org` adresinden uygulamanıza HTTPS üzerinden güvenle erişebilirsiniz.
+   *(Not: PostgreSQL konteyneri ilk kez bu adımda ayağa kalktığı için `init-dbs.sql` script'i otomatik çalışır ve 7 veritabanını oluşturur.)*
+3. Tüm konteynerler `Running (Healthy)` durumuna geçtiğinde `https://careercoachapp.duckdns.org` adresinden uygulamanıza erişebilirsiniz.
 
 ---
 
-## 5. Canlıya Çıktıktan Sonra Kontrol Listesi
+## 5. İlk Kurulum Sonrası Güncellemeler (Otomatik CI/CD Süreci)
+
+**Bölüm 4** bir kez tamamlandıktan sonra uygulamanızda yapacağınız kod güncellemeleri için sunucuya tekrar bağlanmanıza gerek yoktur:
+
+1. **Standart Kod Güncellemeleri (Otomatik):**
+   * Coolify'da **Auto Deploy** özelliği varsayılan olarak aktiftir.
+   * Lokalinizde yaptığınız değişiklikleri GitHub'da **`main` dalına push veya merge ettiğiniz anda** GitHub, Coolify'a webhook sinyali gönderir; Coolify değişen servislerin imajını otomatik yeniden derler ve sıfır kesintiyle (zero-downtime) canlıya alır.
+2. **İstisnai Durumlar (Manuel Müdahale Gerektiren Değişiklikler):**
+   * **Yeni `.env` Değişkeni Eklendiyse:** Önce Coolify panelindeki **Environment Variables** sekmesine yeni değişkeni ekleyin, ardından sağ üstteki **Redeploy** butonuna basın.
+   * **Yeni Veritabanı Eklendiyse:** `init-dbs.sql` yalnızca PostgreSQL ilk kez sıfırdan yaratılırken çalışır. Mevcut veritabanına sonradan yeni bir DB eklemek isterseniz Coolify'da PostgreSQL servisinin **Terminal** sekmesinden `psql -U postgres -c "CREATE DATABASE yeni_db;"` komutunu çalıştırmanız gerekir.
+
+---
+
+## 6. Canlıya Çıktıktan Sonra Kontrol Listesi
 
 * [ ] **İlk Admin Kullanıcısı:** `user-management` üzerinden kayıt olun, veritabanından veya seed script ile hesabınıza `system_admin` rolü atayın.
 * [ ] **LLM Sağlayıcıları:** `system-admin` arayüzüne giriş yaparak Gemini / Groq / OpenAI API anahtarlarınızı ekleyin ve ajan öncelik sıralamalarını aktif edin.
-* [ ] **Otomatik Yedekleme:** Hetzner Console üzerinden sunucunuz için **Backups** özelliğini (\~€0.90/ay) aktif ederek 7 PostgreSQL veritabanının her gece otomatik imaj yedeğinin alınmasını sağlayın.
+* [ ] **Otomatik Yedekleme:** Hetzner Console üzerinden sunucunuz için **Backups** özelliğini (~€0.90/ay) aktif ederek 7 PostgreSQL veritabanının her gece otomatik imaj yedeğinin alınmasını sağlayın.
 * [ ] **SSL Doğrulaması:** Tarayıcıdan `https://careercoachapp.duckdns.org` adresini açtığınızda adres çubuğunda kilit (HTTPS) simgesinin aktif olduğunu kontrol edin *(Not: DuckDNS üzerinde aynı saat içinde çok fazla subdomain denemesi yaparsanız Let's Encrypt hız sınırına takılmamak için sadece yukarıdaki 3 subdomain'i kullanın).*
