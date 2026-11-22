@@ -30,7 +30,7 @@ Canlıya çıkış için yalnızca **1 adet Hetzner Cloud Sunucusu (VPS)** yeter
 #### Seçenek B (Ücretli): Özel Alan Adı Satın Alma
 * **Cloudflare Registrar** (~$10–$12/yıl) üzerinden özel bir domain satın alabilir ve DNS kayıtlarını Cloudflare üzerinden yönetebilirsiniz.
 
-#### Seçenek C (En Pratik & Kayıt Gerektirmeyen Ücretsiz Çözüm): Coolify Dahili `sslip.io` Kullanımı
+#### Seçenek C (Önerilen & Kayıt Gerektirmeyen Ücretsiz Çözüm): Coolify Dahili `sslip.io` Kullanımı
 Hiçbir dış web sitesine kayıt olmadan, doğrudan Hetzner sunucunuzun Public IPv4 adresini (örnek: `49.12.xx.xx`) kullanarak ücretsiz alt alan adı ve otomatik HTTPS (Let's Encrypt SSL) alabilirsiniz:
 1. Herhangi bir DNS sitesine girmenize gerek yoktur; `sslip.io` adresteki IP'yi otomatik olarak sunucunuza çözer.
 2. Hetzner sunucunuzu oluşturduktan sonra aldığınız Public IP adresini (örneğin `49.12.xx.xx`) araya yazarak şu 3 adresi doğrudan Coolify'da tanımlayabilirsiniz:
@@ -66,7 +66,7 @@ type "%USERPROFILE%\.ssh\id_ed25519.pub"
 3. Oluşturulan sunucunun **Public IPv4** adresini (örnek: `49.12.xx.xx`) not alın.
 
 ### Adım 1.4: DNS / IP Yönlendirmesini Tamamlama
-* **Seçenek C (`sslip.io`) Kullanıyorsanız:** Hiçbir DNS ayarı yapmanıza gerek yoktur; doğrudan Bölüm 2'ye geçin.
+* **Seçenek C (`sslip.io`) Kullanıyorsanız:** Hiçbir DNS ayarı yapmanıza gerek yoktur; doğrudan **Bölüm 2**'ye geçin.
 * **Seçenek A (DuckDNS) Kullanıyorsanız:** [duckdns.org](https://www.duckdns.org/) paneline girip `careercoachapp` satırındaki IP kutusuna Hetzner Public IPv4 adresinizi (`49.12.xx.xx`) yazın ve **update ip** butonuna basın.
 * **Seçenek B (Cloudflare) Kullanıyorsanız:** Cloudflare DNS paneline aşağıdaki 3 adet `A` kaydını girin:
   * `A` | `@` | `49.12.xx.xx`
@@ -96,7 +96,8 @@ Lütfen projede aşağıdaki 5 değişikliği eksiksiz ve çalışır şekilde o
      `user_management_db`, `personal_admin_db`, `system_admin_db`, `opportunity_db`, `scout_agent_db`, `relocation_agent_db`, `coach_agent_db`.
 
 2. **Reverse Proxy / API Gateway Yapılandırması (`deploy/caddy/Caddyfile`):**
-   - Frontend'in prodüksiyonda 7 farklı porta değil, tek bir domain (`{$API_DOMAIN}`) üzerinden path bazlı yönlendirmeyle erişebilmesi için Caddyfile yaz:
+   - Coolify kendi Traefik reverse proxy'si ile SSL sonlandırması yapacağı için Caddy'yi `:80` portu üzerinden HTTP iç gateway olarak yapılandır (otomatik HTTPS döngüsüne girmemesi için `auto_https off` veya `:80` bloğu kullan).
+   - Frontend'in prodüksiyonda 7 farklı porta değil, tek bir API domaini üzerinden path bazlı yönlendirmeyle erişebilmesi için Caddyfile yaz:
      - `/api/users/*` -> `reverse_proxy user-management:8001` (servislerin mevcut route yapısına uygun olarak prefix strip veya yönlendirme kurallarını ayarla)
      - `/api/personal/*` -> `reverse_proxy personal-admin:8002`
      - `/api/system/*` -> `reverse_proxy system-admin:8003`
@@ -104,7 +105,7 @@ Lütfen projede aşağıdaki 5 değişikliği eksiksiz ve çalışır şekilde o
      - `/api/agents/scout/*` -> `reverse_proxy scout-agent:8005`
      - `/api/agents/relocation/*` -> `reverse_proxy relocation-agent:8006`
      - `/api/agents/coach/*` -> `reverse_proxy application-coach-agent:8007`
-   - CORS başlıklarını ve preflight (`OPTIONS`) isteklerini destekleyecek şekilde yapılandır.
+   - CORS başlıklarını (`Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`) ve preflight (`OPTIONS`) isteklerini destekleyecek şekilde yapılandır.
 
 3. **Frontend API İstemci Güncellemesi (`frontend`):**
    - Frontend kod tabanında `localhost:8001` .. `localhost:8007` şeklinde sabit (hardcoded) tanımlanmış tüm servis URL'lerini bul.
@@ -116,7 +117,7 @@ Lütfen projede aşağıdaki 5 değişikliği eksiksiz ve çalışır şekilde o
 5. **Prodüksiyon Docker Compose ve Ortam Değişkenleri (`docker-compose.prod.yml` ve `.env.prod.example`):**
    - Tüm 7 mikroservisi, tek PostgreSQL 16 konteynerini (`init-dbs.sql` mount edilmiş ve kalıcı volume tanımlı), Next.js frontend'i (production build) ve Caddy servisini içeren `docker-compose.prod.yml` dosyasını yaz.
    - Tüm servisleri `career_internal_net` adlı izole bir Docker bridge ağına bağla.
-   - PostgreSQL ve FastAPI servislerinin portlarını (`8001-8007`, `5432`) host makineye (`ports:`) AÇMA.
+   - PostgreSQL ve FastAPI servislerinin portlarını (`8001-8007`, `5432`) host makineye (`ports:`) AÇMA. Coolify ile kullanılacağı için `frontend` (port 3000) ve `caddy` (port 80) servislerini `expose:` ile tanımla (host port çakışmasını önlemek için `80:80` veya `443:443` host port mapping yapma).
    - Servis içi haberleşme URL'lerini (`USER_SERVICE_URL=http://user-management:8001` vb.) iç ağ isimleriyle tanımla.
    - Tüm konteynerlere `restart: unless-stopped` ve sağlık kontrolleri (`healthcheck`) ekle.
 ```
@@ -192,35 +193,39 @@ ufw allow 443/tcp
 ufw --force enable
 ```
 
-### Adım 4.3: Coolify Kurulumu
+### Adım 4.3: Coolify Kurulumu ve `sslip.io` Panel Ayarı
 *(Uzak Ubuntu sunucusunun SSH terminalinde çalıştırılır; kurulum yaklaşık 2-3 dakika sürer.)*
 ```bash
 curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
 ```
 1. Kurulum bittiğinde tarayıcınızdan `http://49.12.xx.xx:8000` adresine girin ve ilk yönetici (admin) hesabınızı oluşturun.
-2. Coolify arayüzünde **Settings** menüsüne girip **Instance Domain** alanına seçtiğiniz alan adını yazın ve kaydedin:
-   * **Seçenek C (`sslip.io`):** `https://coolify.49.12.xx.xx.sslip.io`
-   * **Seçenek A (DuckDNS):** `https://coolify.careercoachapp.duckdns.org`
+2. Coolify arayüzünde sol menüden **Settings** sayfasına girin:
+   * **Instance Domain** alanına seçtiğiniz alan adını yazın ve **Save** butonuna tıklayın:
+     * **Seçenek C (`sslip.io`):** `https://coolify.49.12.xx.xx.sslip.io`
+     * **Seçenek A (DuckDNS):** `https://coolify.careercoachapp.duckdns.org`
+   * *(Seçenek C için not: Coolify'da **Servers → localhost → Wildcard Domain** alanı varsayılan olarak `http://49.12.xx.xx.sslip.io` şeklinde gelir. Coolify sizin `https://...sslip.io` adresleriniz için otomatik Let's Encrypt SSL sertifikası üretecektir.)*
+3. Birkaç saniye bekledikten sonra tarayıcınızdan artık doğrudan `https://coolify.49.12.xx.xx.sslip.io` adresinden güvenli (HTTPS) olarak panele giriş yapabilirsiniz.
 
 ### Adım 4.4: GitHub Repoyu Coolify'a Bağlama
-1. Coolify panelinde **Sources → Add** yolunu izleyerek **GitHub App** oluşturun.
+1. Coolify panelinde **Sources → + Add** yolunu izleyerek **GitHub App** oluşturun.
 2. Yönlendirilen GitHub ekranında yalnızca `CareerCoachAgenticAIApp` reposuna erişim izni verin.
 
 ### Adım 4.5: Projeyi ve Docker Compose Yapısını Tanımlama
-1. Coolify'da **Projects → New Project** (`CareerCoachProd`) oluşturun.
+1. Coolify'da **Projects → + Add** (`CareerCoachProd`) oluşturun.
 2. **+ New Resource → Docker Compose** seçeneğine tıklayın.
 3. Bağladığınız `CareerCoachAgenticAIApp` reposunu ve `main` dalını seçin.
 4. **Docker Compose Location** alanına `/docker-compose.prod.yml` yazın.
-5. **Domains** bölümünde seçtiğiniz yönteme göre alan adlarını tanımlayın:
+5. **Domains** bölümünde servislerin yanındaki **Settings** (veya Domain) alanlarına seçtiğiniz yönteme göre alan adlarını tanımlayın:
    * **Seçenek C (`sslip.io`) Kullanıyorsanız:**
-     * `frontend`: `https://careercoach.49.12.xx.xx.sslip.io`
-     * `caddy`: `https://api.49.12.xx.xx.sslip.io`
+     * `frontend` servisi için: `https://careercoach.49.12.xx.xx.sslip.io`
+     * `caddy` servisi için: `https://api.49.12.xx.xx.sslip.io`
    * **Seçenek A (DuckDNS) Kullanıyorsanız:**
-     * `frontend`: `https://careercoachapp.duckdns.org`
-     * `caddy`: `https://api.careercoachapp.duckdns.org`
+     * `frontend` servisi için: `https://careercoachapp.duckdns.org`
+     * `caddy` servisi için: `https://api.careercoachapp.duckdns.org`
 
 ### Adım 4.6: Ortam Değişkenleri (Environment Variables) ve İlk Deploy
-1. Coolify'daki **Environment Variables** sekmesine `.env.prod.example` dosyanızdaki tüm değişkenleri ve gizli anahtarları (`JWT_SECRET`, `INTERNAL_API_KEY`, `FERNET_KEY`, `POSTGRES_PASSWORD` vb.) girin *(Örnekler `sslip.io` formatındadır; kendi IP veya domaininize göre güncelleyin)*:
+1. Coolify'daki **Environment Variables** sekmesine `.env.prod.example` dosyanızdaki tüm değişkenleri ve gizli anahtarları (`JWT_SECRET`, `INTERNAL_API_KEY`, `FERNET_KEY`, `POSTGRES_PASSWORD` vb.) girin *(Örnekler **Seçenek C (`sslip.io`)** formatındadır; `49.12.xx.xx` yerine kendi sunucu IP'nizi yazın)*:
+   * `CORS_ORIGINS=https://careercoach.49.12.xx.xx.sslip.io`
    * `NEXT_PUBLIC_USER_API_URL=https://api.49.12.xx.xx.sslip.io/api/users`
    * `NEXT_PUBLIC_PERSONAL_API_URL=https://api.49.12.xx.xx.sslip.io/api/personal`
    * `NEXT_PUBLIC_SYSTEM_API_URL=https://api.49.12.xx.xx.sslip.io/api/system`
@@ -229,7 +234,7 @@ curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
    * `NEXT_PUBLIC_RELOCATION_API_URL=https://api.49.12.xx.xx.sslip.io/api/agents/relocation`
    * `NEXT_PUBLIC_COACH_API_URL=https://api.49.12.xx.xx.sslip.io/api/agents/coach`
 2. Sağ üstteki **Deploy** butonuna basın.
-   *(PostgreSQL konteyneri ilk kez bu adımda ayağa kalktığı için `init-dbs.sql` otomatik çalışır ve 7 veritabanını oluşturur.)*
+   *(PostgreSQL konteyneri ilk kez bu adımda ayağa kalktığı için `init-dbs.sql` otomatik çalışır ve 7 veritabanını oluşturur. Coolify arka planda Let's Encrypt üzerinden `sslip.io` SSL sertifikalarını da otomatik üretir.)*
 3. Tüm konteynerler `Running (Healthy)` durumuna geçtiğinde `https://careercoach.49.12.xx.xx.sslip.io` adresinden uygulamanıza erişebilirsiniz.
 
 ---
@@ -252,4 +257,4 @@ curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
 * [ ] **İlk Admin Kullanıcısı:** `user-management` üzerinden kayıt olun, veritabanından veya seed script ile hesabınıza `system_admin` rolü atayın.
 * [ ] **LLM Sağlayıcıları:** `system-admin` arayüzüne giriş yaparak Gemini / Groq / OpenAI API anahtarlarınızı ekleyin ve ajan öncelik sıralamalarını aktif edin.
 * [ ] **Otomatik Yedekleme:** Hetzner Console üzerinden sunucunuz için **Backups** özelliğini (~€0.90/ay) aktif ederek 7 PostgreSQL veritabanının her gece otomatik imaj yedeğinin alınmasını sağlayın.
-* [ ] **SSL Doğrulaması:** Tarayıcıdan uygulama adresinizi açtığınızda adres çubuğunda kilit (HTTPS) simgesinin aktif olduğunu kontrol edin.
+* [ ] **SSL Doğrulaması:** Tarayıcıdan `https://careercoach.49.12.xx.xx.sslip.io` adresini açtığınızda adres çubuğunda kilit (HTTPS) simgesinin aktif olduğunu kontrol edin. *(Not: Let's Encrypt sertifika üretimi ilk deploy'dan sonra 1–2 dakika sürebilir.)*
